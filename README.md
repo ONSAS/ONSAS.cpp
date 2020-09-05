@@ -5,8 +5,8 @@
 ## How to compile the code in Ubuntu
 
 * Open a terminal and write:
+  * `sudo apt-get install g++ make cmake libopenblas-dev liblapack-dev libarpack2` - to install armadillo dependencies.
   * `sudo apt-get install libarmadillo-dev` - install the [Armadillo](http://arma.sourceforge.net/).
-  * `sudo apt-get install g++ make` - to install other required libraries.
 * In the terminal move to the src folder and run `make`
 
 ## How to use the code
