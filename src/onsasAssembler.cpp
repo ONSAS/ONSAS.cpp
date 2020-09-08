@@ -272,7 +272,7 @@ int main(){
   varsInps.load("varsInps.dat");
   conec.load("Conec.dat");
   coordsElemsMat.load("coordsElemsMat.dat");
-  hyperElasParamsMat.load("hyperElasParamsMat.dat");
+  hyperElasParamsMat.load("materialsParamsMat.dat");
 
   // --- processing ---  
   int nelems = conec.n_rows ;
