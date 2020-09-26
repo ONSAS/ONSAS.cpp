@@ -1,5 +1,5 @@
 cd src
 make
-cp onsasAssembler.lnx ../../codigo_onsas_repo/sources/
+cp timeStepIteration.lnx ../../octave_src_repo/sources/
 make clean
 cd ..

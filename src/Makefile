@@ -4,26 +4,22 @@
 CXX = g++
 
 # flag of compiler
-#~ CXXFLAGS = -Wall -g -O2 -larmadillo
 CXXFLAGS = -Wall -g -O2 -larmadillo
 
-#~ EXE = sts
-EXE = onsasAssembler.lnx
+EXE = timeStepIteration.lnx
 
 SRC= src
 
 # target: dependencies
 # TAB command to generate the target
-#~ sts: timeStep.o
-main: onsasAssembler.o
-	$(CXX) -o $(EXE) onsasAssembler.o $(CXXFLAGS)
+main: timeStepIteration.o
+	$(CXX) -o $(EXE) timeStepIteration.o $(CXXFLAGS)
 
-onsasAssembler.o:
-	$(CXX) $(CXXFLAGS) -c onsasAssembler.cpp
-#~ 	$(CXX) $(CXXFLAGS) -o $(EXE) timeStep.o
+timeStepIteration.o:
+	$(CXX) $(CXXFLAGS) -c timeStepIteration.cpp
 
 clean:
 	rm $(EXE) *.o
 
 # option direct from console without make:
-#  g++ onsasAssembler.cpp -o onsasAssembler -O2 -larmadillo
+#  g++ timeStepIteration.cpp -o timeStepIteration.lnx -O2 -larmadillo

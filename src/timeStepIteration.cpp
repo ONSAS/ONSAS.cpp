@@ -17,7 +17,7 @@
 
 // ------------------------------------------------
 // To compile:
-// g++ onsasAssembler.cpp -larmadillo -o onsasAssembler
+// g++ timeStepIteration.cpp -larmadillo -o timeStepIteration.lnx
 // ------------------------------------------------
 
 #include <iostream>      /* printf */
