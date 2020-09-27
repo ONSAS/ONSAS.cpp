@@ -1,6 +1,6 @@
 // Copyright (C) 2020, J. M. Perez Zerpa
 //
-// This file is part of ONSAS.
+// This file is part of ONSAS++.
 //
 // ONSAS++ is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,22 +16,21 @@
 // along with ONSAS++.  If not, see <https://www.gnu.org/licenses/>.
 
 // ------------------------------------------------
-// To compile:
+// To compile run "make" or from command line:
 // g++ timeStepIteration.cpp -larmadillo -o timeStepIteration.lnx
 // ------------------------------------------------
 
 #include <iostream>      /* printf */
+#include <armadillo>
+//~ #include <cstdlib>   // funciones como atoi y atof
+//~ #include <ctime>
 //~ #include <stdio.h>      /* printf */
 //~ #include <math.h>      /* printf */
 //~ #include <time.h>       /* time_t, struct tm, difftime, time, mktime */
  //~ #include <fstream>   // file streaming
-#include <armadillo>
-//~ #include <cstdlib>   // funciones como atoi y atof
-//~ #include <ctime>
 
-using namespace std;
-using namespace arma;
-
+using namespace std  ;
+using namespace arma ;
 
 // =====================================================================
 //  nodes2dofs
@@ -250,117 +249,202 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
 
 
 // =====================================================================
-//  main
+// assembler
 // =====================================================================
-int main(){ 
+void assembler(){
 
-  cout << "============================" << endl;
-  cout << "===  ONSAS C++ Assembler ===" << endl;
 
-  // -------------------------------------------------------------------
-  // --- reading ---
-  // -------------------------------------------------------------------
-  cout << "  reading inputs..." << endl;
+
+
+  
+  //~ // -------------------------------------------------------------------
+  //~ // calculos
+  //~ // -------------------------------------------------------------------
+  
+  //~ vec FintGt = zeros<vec>(6*nnodes);
+  
+  //~ int numIndexsKT = nelems*12*12 ;
+  
+  //~ vec indsIKT = zeros<vec>( numIndexsKT ) ;
+  //~ vec indsJKT = zeros<vec>( numIndexsKT ) ;
+  //~ vec valsIKT = zeros<vec>( numIndexsKT ) ;
+  //~ int indTotal = 0;
+
+  //~ vec Finte(12) ; 
+  //~ mat KTe(12,12);
+    
+  //~ ivec nodesElem, dofsElem;
+
+  //~ mat tetCoordMat = zeros<mat>(3,4);
+  //~ mat elemDispMat = zeros<mat>(3,4);
+  //~ vec hyperElasParamsVec(2) ;
+  //~ ivec dofsTet(12) ;
+  
+  //~ for( int elem = 1; elem <= nelems; elem++){
+//    cout << " elem: " << elem << endl;
+    //~ nodesElem = ( conec( span(elem-1,elem-1), span(0,3) )).t(); 
+    //~ dofsElem  = nodes2dofs( nodesElem , 6 ) ;
+
+    //~ for (int indi=1; indi<= 12; indi++){
+      //~ dofsTet( indi-1 ) = dofsElem( (indi-1)*2 ) ;
+    //~ }
+
+    //~ for (int indi=1; indi<= 3; indi++){
+      //~ for (int indj=1; indj<= 4; indj++){
+        //~ tetCoordMat( indi-1, indj-1 ) = coordsElemsMat(elem-1, (indi-1)*2 + (indj-1)*6 ) ;
+        //~ elemDispMat( indi-1, indj-1 ) = Ut( dofsElem ( (indi-1)*2 + (indj-1)*6 ) -1 ) ;
+      //~ }
+    //~ }
+
+    //~ hyperElasParamsVec(0) = hyperElasParamsMat( conec(elem-1,5-1)-1 , 1 ) ;
+    //~ hyperElasParamsVec(1) = hyperElasParamsMat( conec(elem-1,5-1)-1 , 2 ) ;
+    
+    //~ // --- computes internal loads or tanget matrix ---
+    //~ elementTetraSVKSolidInternLoadsTangMat( tetCoordMat, elemDispMat, hyperElasParamsVec, paramOut, Finte, KTe) ;
+    
+    //~ // assembly Fint
+    //~ for (int indi=1; indi<= 12; indi++){
+      //~ FintGt( dofsTet( indi-1 ) -1) = FintGt( dofsTet( indi-1 ) -1) + Finte( indi-1 ) ;
+    //~ }
+    
+    //~ if (paramOut == 2){  
+//          indVec = (indRow+1)/2 ;
+      //~ for (int indi=1; indi<=12; indi++){
+        //~ for (int indj=1; indj<=12; indj++){
+          //~ indTotal++;     
+        
+          //~ indsIKT ( indTotal-1 ) = dofsTet( indi-1 )     ;
+          //~ indsJKT ( indTotal-1 ) = dofsTet( indj-1 )     ;  
+          //~ valsIKT ( indTotal-1 ) = KTe( indi-1, indj-1 ) ;
+        //~ }     
+      //~ }
+    //~ } // if paramOut 2
+    
+
+  //~ } // ---   for elements -------------------------------
+  
+  //~ FintGt.save("FintGt.dat", raw_ascii);
+  
+  //~ if (paramOut == 2){  
+    //~ indsIKT.save("indsIKT.dat", raw_ascii);
+    //~ indsJKT.save("indsJKT.dat", raw_ascii);
+    //~ valsIKT.save("valsIKT.dat", raw_ascii);
+  //~ }
+  
+}
+
+
+
+void extractMethodParams( mat numericalMethodParams, int & solutionMethod, \
+                          double & stopTolDeltau, double & stopTolForces,  \
+                          int & stopTolIts, double & targetLoadFactr, \
+                          int & nLoadSteps, double & incremArcLen, \
+                          double & deltaT, double & deltaNW, double & AlphaNW, \
+                          double & alphaHHT, double & finalTime ){
+  
+  solutionMethod   = numericalMethodParams(1-1) ;
+  
+  if (solutionMethod == 1){
+
+    // ----- resolution method params -----
+    stopTolDeltau    = numericalMethodParams(2-1) ;
+    stopTolForces    = numericalMethodParams(3-1) ;
+    stopTolIts       = numericalMethodParams(4-1) ;
+    targetLoadFactr  = numericalMethodParams(5-1) ;
+    nLoadSteps       = numericalMethodParams(6-1) ;
+  
+    incremArcLen     = 0 ;
+   
+    deltaT = targetLoadFactr / double( nLoadSteps) ;
+    
+    finalTime = targetLoadFactr ;
+    
+    deltaNW =  0; AlphaNW = 0 ; alphaHHT = 0 ;
+  }
+}
+
+// =============================================================================
+//  main
+// =============================================================================
+int main(){
+  
+  cout << "\n=============================" << endl;
+  cout << "=== C++ timeStepIteration ===" << endl;
+
+  // ---------------------------------------------------------------------------
+  // --------                       reading                          -----------
+  // ---------------------------------------------------------------------------
+  cout << "  reading inputs..." ;
+  
+  // declarations of variables read
+  imat conec;
+  mat numericalMethodParams;
+  sp_mat systemDeltauMatrix;
+  vec U, Fint;
+  
+  // reading
+  conec.load("Conec.dat");
+  numericalMethodParams.load("numericalMethodParams.dat");
+  systemDeltauMatrix.load("systemDeltauMatrix.dat", coord_ascii);
+  systemDeltauMatrix = systemDeltauMatrix.tail_rows(systemDeltauMatrix.n_rows-1);
+  systemDeltauMatrix = systemDeltauMatrix.tail_cols(systemDeltauMatrix.n_cols-1);
+  U.load("U.dat");
+  Fint.load("Fint.dat");
+  
+  cout << " done" << endl ;
+  // ---------------------------------------------------------------------------
+  
+
+  // ---------------------------------------------------------------------------
+  // --------                       pre                              -----------
+  // ---------------------------------------------------------------------------
   
   // declarations
-  vec varsInps;
-  imat conec;
-  mat coordsElemsMat;
-  mat hyperElasParamsMat;
+  int nelems    = conec.n_rows ;  int ndofpnode = 6;
+  int solutionMethod, nLoadSteps, stopTolIts ;
+  double stopTolDeltau, stopTolForces, targetLoadFactr, \
+    incremArcLen, deltaT, deltaNW, AlphaNW, alphaHHT, finalTime ;  
+
+  extractMethodParams( numericalMethodParams, solutionMethod, stopTolDeltau, \
+    stopTolForces, stopTolIts, targetLoadFactr, nLoadSteps, incremArcLen, \
+    deltaT, deltaNW, AlphaNW, alphaHHT, finalTime );
+  // ---------------------------------------------------------------------------
+
+
+  // ---------------------------------------------------------------------------
+  // ----       iteration in displacements or load-displacements         -------
+  // ---------------------------------------------------------------------------
   
-  // --- reading ---   
-  varsInps.load("varsInps.dat");
-  conec.load("Conec.dat");
-  coordsElemsMat.load("coordsElemsMat.dat");
-  hyperElasParamsMat.load("materialsParamsMat.dat");
+  sp_mat KTtred = systemDeltauMatrix ;
+
+  // assign disps and forces at time t
+  vec Ut    = U    ;
+  vec Fintt = Fint ;
+  
+  // start iteration with previous displacements ---
+  vec Utp1k = Ut       ;   // initial guess
+  
+  cout << ndofpnode << nelems << endl;
+
+
+  return 0;
+}
+// =============================================================================
+
+
+
+  //~ varsInps.load("varsInps.dat");
+  //~ coordsElemsMat.load("coordsElemsMat.dat");
+  //~ hyperElasParamsMat.load("materialsParamsMat.dat");
 
   // --- processing ---  
-  int nelems = conec.n_rows ;
-  int nnodes = ( varsInps.n_rows -1) / 6 ;
-  int paramOut = varsInps( varsInps.n_rows - 1 ) ;
-  vec Ut = varsInps( span(0,varsInps.n_rows - 2), span(0,0) ) ;
+  
+  //~ int nnodes = ( varsInps.n_rows -1) / 6 ;
+  //~ int paramOut = varsInps( varsInps.n_rows - 1 ) ;
+  //~ vec Ut = varsInps( span(0,varsInps.n_rows - 2), span(0,0) ) ;
 
   //~ cout << "  paramOut: " << paramOut << endl;
   //~ cout << "  nnodes: " << nnodes << endl;
-  //~ cout << "  nelems: " << nelems << endl;
   // -------------------------------------------------------------------
   
   //~ cout << "Ut: " << Ut << endl;
-  
-  // -------------------------------------------------------------------
-  // calculos
-  // -------------------------------------------------------------------
-  
-  vec FintGt = zeros<vec>(6*nnodes);
-  
-  int numIndexsKT = nelems*12*12 ;
-  
-  vec indsIKT = zeros<vec>( numIndexsKT ) ;
-  vec indsJKT = zeros<vec>( numIndexsKT ) ;
-  vec valsIKT = zeros<vec>( numIndexsKT ) ;
-  int indTotal = 0;
-
-  vec Finte(12) ; 
-  mat KTe(12,12);
-    
-  ivec nodesElem, dofsElem;
-
-  mat tetCoordMat = zeros<mat>(3,4);
-  mat elemDispMat = zeros<mat>(3,4);
-  vec hyperElasParamsVec(2) ;
-  ivec dofsTet(12) ;
-  
-  for( int elem = 1; elem <= nelems; elem++){
-//~ //    cout << " elem: " << elem << endl;
-    nodesElem = ( conec( span(elem-1,elem-1), span(0,3) )).t(); 
-    dofsElem  = nodes2dofs( nodesElem , 6 ) ;
-
-    for (int indi=1; indi<= 12; indi++){
-      dofsTet( indi-1 ) = dofsElem( (indi-1)*2 ) ;
-    }
-
-    for (int indi=1; indi<= 3; indi++){
-      for (int indj=1; indj<= 4; indj++){
-        tetCoordMat( indi-1, indj-1 ) = coordsElemsMat(elem-1, (indi-1)*2 + (indj-1)*6 ) ;
-        elemDispMat( indi-1, indj-1 ) = Ut( dofsElem ( (indi-1)*2 + (indj-1)*6 ) -1 ) ;
-      }
-    }
-
-    hyperElasParamsVec(0) = hyperElasParamsMat( conec(elem-1,5-1)-1 , 1 ) ;
-    hyperElasParamsVec(1) = hyperElasParamsMat( conec(elem-1,5-1)-1 , 2 ) ;
-    
-    // --- computes internal loads or tanget matrix ---
-    elementTetraSVKSolidInternLoadsTangMat( tetCoordMat, elemDispMat, hyperElasParamsVec, paramOut, Finte, KTe) ;
-    
-    // assembly Fint
-    for (int indi=1; indi<= 12; indi++){
-      FintGt( dofsTet( indi-1 ) -1) = FintGt( dofsTet( indi-1 ) -1) + Finte( indi-1 ) ;
-    }
-    
-    if (paramOut == 2){  
-//~ //          indVec = (indRow+1)/2 ;
-      for (int indi=1; indi<=12; indi++){
-        for (int indj=1; indj<=12; indj++){
-          indTotal++;     
-        
-          indsIKT ( indTotal-1 ) = dofsTet( indi-1 )     ;
-          indsJKT ( indTotal-1 ) = dofsTet( indj-1 )     ;  
-          valsIKT ( indTotal-1 ) = KTe( indi-1, indj-1 ) ;
-        }     
-      }
-    } // if paramOut 2
-    
-
-  } // ---   for elements -------------------------------
-  
-  FintGt.save("FintGt.dat", raw_ascii);
-  
-  if (paramOut == 2){  
-    indsIKT.save("indsIKT.dat", raw_ascii);
-    indsJKT.save("indsJKT.dat", raw_ascii);
-    valsIKT.save("valsIKT.dat", raw_ascii);
-  }
-  
-  return 0; 
-}
-
