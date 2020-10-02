@@ -362,6 +362,26 @@ void extractMethodParams( mat numericalMethodParams, int & solutionMethod, \
     deltaNW =  0; AlphaNW = 0 ; alphaHHT = 0 ;
   }
 }
+// =============================================================================
+
+
+// =============================================================================
+// --- computeRHS ---
+// =============================================================================
+void computeRHS( vec & systemDeltauRHS, vec & FextG, \
+    imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
+    mat materialsParamsMat, sp_mat KS, vec constantFext, vec variableFext, \
+    string userLoadsFilename, double currLoadFactor, \
+    double nextLoadFactor, mat numericalMethodParams, ivec neumdofs, \
+    double nodalDispDamping, vec Ut, vec Udott, vec Udotdott, vec Utp1k, \
+    vec Udottp1k, vec Udotdottp1k, mat elementsParamsMat ){
+
+  systemDeltauRHS.zeros();
+  FextG.zeros();
+}
+// =============================================================================
+
+
 
 // =============================================================================
 //  main
@@ -380,7 +400,11 @@ int main(){
   imat conec;
   mat numericalMethodParams;
   sp_mat systemDeltauMatrix;
-  vec U, Fint;
+  vec U, Udot, Udotdot, Fint, Fmas, Fvis;
+  vec systemDeltauRHS;
+  vec FextG;
+  
+  ifstream ifile ;  
   
   // reading
   conec.load("Conec.dat");
@@ -388,8 +412,14 @@ int main(){
   systemDeltauMatrix.load("systemDeltauMatrix.dat", coord_ascii);
   systemDeltauMatrix = systemDeltauMatrix.tail_rows(systemDeltauMatrix.n_rows-1);
   systemDeltauMatrix = systemDeltauMatrix.tail_cols(systemDeltauMatrix.n_cols-1);
-  U.load("U.dat");
-  Fint.load("Fint.dat");
+
+      U.load("U.dat"      );
+  ifile.open("Udot.dat"   ); if(ifile){    Udot.load("Udot.dat"   );}else{ Udot.zeros()   ;}
+  ifile.open("Udotdot.dat"); if(ifile){ Udotdot.load("Udotdot.dat");}else{ Udotdot.zeros();}
+
+
+  mat crossSecsParamsMat, coordsElemsMat, materialsParamsMat;  
+
   
   cout << " done" << endl ;
   // ---------------------------------------------------------------------------
@@ -418,14 +448,20 @@ int main(){
   sp_mat KTtred = systemDeltauMatrix ;
 
   // assign disps and forces at time t
-  vec Ut    = U    ;
-  vec Fintt = Fint ;
+  vec Ut    = U    ;   vec Udott = Udot ;   vec Udotdott = Udotdot ;
   
   // start iteration with previous displacements ---
   vec Utp1k = Ut       ;   // initial guess
   
   cout << ndofpnode << nelems << endl;
 
+  // --- compute RHS for initial guess ---
+  //~ computeRHS( systemDeltauRHS, FextG, \
+    //~ conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, \
+    //~ constantFext, variableFext, userLoadsFilename, currLoadFactor, \
+    //~ nextLoadFactor, numericalMethodParams, neumdofs, nodalDispDamping, \
+    //~ Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat ) ;
+  // ---------------------------------------------------
 
   return 0;
 }
@@ -448,3 +484,11 @@ int main(){
   // -------------------------------------------------------------------
   
   //~ cout << "Ut: " << Ut << endl;
+
+
+
+
+//~ vec Fintt = Fint ;   vec Fmast = Fmas ;   vec Fvist    = Fvis    ;
+   //~ Fint.load("Fint.dat"   );
+  //~ ifile.open("Fmas.dat"   ); if(ifile){ Fmas.load("Fmas.dat")      ;}else{ Fmas.zeros()   ;}
+  //~ ifile.open("Fvis.dat"   ); if(ifile){ Fvis.load("Fvis.dat")      ;}else{ Fvis.zeros()   ;}
