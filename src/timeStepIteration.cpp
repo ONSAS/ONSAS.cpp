@@ -15,11 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with ONSAS++.  If not, see <https://www.gnu.org/licenses/>.
 
-// ------------------------------------------------
-// To compile run "make" or from command line:
-// g++ timeStepIteration.cpp -larmadillo -o timeStepIteration.lnx
-// ------------------------------------------------
-
 #include <iostream>      /* printf */
 #include <armadillo>
 //~ #include <cstdlib>   // funciones como atoi y atof
@@ -32,41 +27,21 @@
 using namespace std  ;
 using namespace arma ;
 
-// =====================================================================
-//  nodes2dofs
-// =====================================================================
-ivec nodes2dofs( ivec nodes, int degreesPerNode ){
-
-  int  n    = nodes.n_elem ;
-  ivec dofs = zeros<ivec>( degreesPerNode * n ) ;
-  
-  for ( int i=0; i<n ; i++){
-    for ( int j=0; j< degreesPerNode; j++){
-      dofs( i * degreesPerNode + j ) = degreesPerNode*( nodes(i) - 1 ) + ( j+1 ) ;
-    }
-  }  
-  return dofs;
-}
-// =====================================================================
-
-
 
 
 // ==============================================================================
 mat shapeFunsDeriv ( double x, double y, double z ){
 
   mat fun = zeros<mat>( 3, 4 ) ;
-  fun(0,0) =  1 ;
-  fun(0,1) = -1 ;
-  fun(1,1) = -1 ;
-  fun(2,1) = -1 ;
-  fun(2,2) =  1 ;
-  fun(1,3) =  1 ;
+  fun( 0, 0 ) =  1 ;
+  fun( 0, 1 ) = -1 ;
+  fun( 1, 1 ) = -1 ;
+  fun( 2, 1 ) = -1 ;
+  fun( 2, 2 ) =  1 ;
+  fun( 1, 3 ) =  1 ;
+
   return fun;
 }
-// ==============================================================================
-
-
 
 
 // ======================================================================
@@ -162,10 +137,6 @@ mat constTensor ( vec hyperElasParamsVec, mat Egreen ){
   return ConsMat;
 }
 // ======================================================================
-
-
-
-
 
 
 
@@ -378,6 +349,88 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
 
   systemDeltauRHS.zeros();
   FextG.zeros();
+  
+  int solutionMethod, stopTolIts, nLoadSteps ;
+  double stopTolDeltau, stopTolForces, incremArcLen, targetLoadFactr, \
+    deltaT, deltaNW, AlphaNW, alphaHHT, finalTime ;
+			  
+  extractMethodParams  ( numericalMethodParams, solutionMethod, \
+                          stopTolDeltau, stopTolForces,  \
+                          stopTolIts, targetLoadFactr, \
+                          nLoadSteps, incremArcLen, \
+                          deltaT, deltaNW, AlphaNW, \
+                          alphaHHT, finalTime );
+			  
+
+  //~ fs = assembler ( ...
+    //~ Conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Utp1, 1, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, elementsParamsMat ) ;
+  
+  //~ Fint = fs{1} ;  Fvis =  fs{2};  Fmas = fs{3} ;  
+
+  //~ if solutionMethod <= 1
+
+    //~ FextG  = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
+    //~ systemDeltauRHS = - ( Fint(neumdofs) - FextG(neumdofs) ) ;
+
+  //~ elseif solutionMethod == 2
+    
+    //~ if norm(constantFext)>0 || ~(strcmp( userLoadsFilename , '')),
+      //~ error('load case not implemented yet for Arc-Length method');
+    //~ end
+    
+    //~ FextG  = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
+    
+    //~ % incremental displacement
+    //~ systemDeltauRHS = [ -(Fint(neumdofs)-FextG(neumdofs))  variableFext(neumdofs) ] ;
+
+  //~ elseif solutionMethod == 3
+
+    //~ FextG = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
+    
+    //~ rhat      =   Fint ( neumdofs ) ...
+                //~ + Fvis ( neumdofs ) ...
+                //~ + Fmas ( neumdofs ) ...
+                //~ - FextG( neumdofs ) ;
+                
+    //~ systemDeltauRHS = -rhat ;
+
+  //~ elseif solutionMethod == 4
+      
+    //~ fs = assembler ( ...
+      //~ Conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Ut, 1, Udott, ...
+      //~ Udotdott, nodalDispDamping, solutionMethod, elementsParamsMat ) ;
+    
+    //~ Fintt = fs{1} ;  Fvist =  fs{2};  Fmast = fs{3} ;  
+
+    //~ FextG  = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
+    //~ FextGt = computeFext( constantFext, variableFext, currLoadFactor, userLoadsFilename ) ;
+                      
+    //~ rhat   =  ( 1 + alphaHHT ) * ( ...
+                //~ + Fint  ( neumdofs ) ...
+                //~ + Fvis  ( neumdofs ) ...
+                //~ - FextG ( neumdofs ) ...
+              //~ ) ...
+              //~ ...
+              //~ - alphaHHT * ( ...
+                //~ + Fintt ( neumdofs ) ...
+                //~ + Fvist ( neumdofs ) ...
+                //~ - FextGt( neumdofs ) ...
+                //~ ) ...
+              //~ ...
+              //~ + Fmas    ( neumdofs ) ;
+                
+    //~ systemDeltauRHS = -rhat ;
+    
+  //~ end
+    
+
+
+
+
+
+  
+  
+  
 }
 // =============================================================================
 
@@ -397,33 +450,48 @@ int main(){
   cout << "  reading inputs..." ;
   
   // declarations of variables read
-  imat conec;
-  mat numericalMethodParams;
-  sp_mat systemDeltauMatrix;
-  vec U, Udot, Udotdot, Fint, Fmas, Fvis;
-  vec systemDeltauRHS;
-  vec FextG;
+  imat conec                             ;
+  mat numericalMethodParams              ;
+  sp_mat systemDeltauMatrix              ;
+  sp_mat KS                              ;
+  vec U, Udot, Udotdot, Fint, Fmas, Fvis ;
+  vec systemDeltauRHS                    ;
+  vec FextG, constantFext, variableFext  ;
+  string userLoadsFilename               ;
+  vec scalarParams                       ;
+  scalarParams.load("scalarParams.dat")  ;
+
+  //~ double currLoadFactor                  ;
   
-  ifstream ifile ;  
+  ifstream ifile                         ;
   
   // reading
   conec.load("Conec.dat");
   numericalMethodParams.load("numericalMethodParams.dat");
+
   systemDeltauMatrix.load("systemDeltauMatrix.dat", coord_ascii);
   systemDeltauMatrix = systemDeltauMatrix.tail_rows(systemDeltauMatrix.n_rows-1);
   systemDeltauMatrix = systemDeltauMatrix.tail_cols(systemDeltauMatrix.n_cols-1);
-
+  
+  KS.load("KS.dat", coord_ascii);
+  if ( KS.n_rows > 0 ){
+    KS = KS.tail_rows(KS.n_rows-1);
+    KS = KS.tail_cols(KS.n_cols-1);
+  }
+    
       U.load("U.dat"      );
   ifile.open("Udot.dat"   ); if(ifile){    Udot.load("Udot.dat"   );}else{ Udot.zeros()   ;}
   ifile.open("Udotdot.dat"); if(ifile){ Udotdot.load("Udotdot.dat");}else{ Udotdot.zeros();}
 
+  constantFext.load("constantFext.dat");
+  variableFext.load("variableFext.dat");
 
   mat crossSecsParamsMat, coordsElemsMat, materialsParamsMat;  
-
   
   cout << " done" << endl ;
   // ---------------------------------------------------------------------------
   
+
 
   // ---------------------------------------------------------------------------
   // --------                       pre                              -----------
@@ -453,7 +521,7 @@ int main(){
   // start iteration with previous displacements ---
   vec Utp1k = Ut       ;   // initial guess
   
-  cout << ndofpnode << nelems << endl;
+  cout << "ndofspernode: " << ndofpnode << "neleems: " << nelems << endl;
 
   // --- compute RHS for initial guess ---
   //~ computeRHS( systemDeltauRHS, FextG, \
@@ -492,3 +560,108 @@ int main(){
    //~ Fint.load("Fint.dat"   );
   //~ ifile.open("Fmas.dat"   ); if(ifile){ Fmas.load("Fmas.dat")      ;}else{ Fmas.zeros()   ;}
   //~ ifile.open("Fvis.dat"   ); if(ifile){ Fvis.load("Fvis.dat")      ;}else{ Fvis.zeros()   ;}
+
+
+
+
+
+
+
+
+
+
+
+  //~ booleanConverged = 0                              ;
+  //~ dispIters        = 0                              ;
+  //~ currDeltau       = zeros( length( neumdofs ), 1 ) ;
+  
+  //~ while  booleanConverged == 0
+    //~ dispIters = dispIters + 1 ;
+  
+    //~ % --- solve system ---
+    //~ [ deltaured, nextLoadFactor ] = computeDeltaU ( systemDeltauMatrix, systemDeltauRHS, dispIters, convDeltau(neumdofs), numericalMethodParams, nextLoadFactor , currDeltau ) ;
+    //~ % ---------------------------------------------------
+  
+    //~ % --- updates: model variables and computes internal forces ---
+    //~ [Utp1k, currDeltau] = updateUiter(Utp1k, deltaured, neumdofs, solutionMethod, currDeltau ) ;
+  
+    //~ % --- update next time magnitudes ---
+    //~ [ Udottp1k, Udotdottp1k, nextTime ] = updateTime( ...
+      //~ Ut, Udott, Udotdott, Utp1k, numericalMethodParams, currTime ) ;
+    //~ % ---------------------------------------------------
+    
+    //~ % --- system matrix ---
+    //~ systemDeltauMatrix          = computeMatrix( Conec, crossSecsParamsMat, coordsElemsMat, ...
+      //~ materialsParamsMat, KS, Utp1k, neumdofs, numericalMethodParams, ...
+      //~ nodalDispDamping, Udott, Udotdott, elementsParamsMat ) ;
+    //~ % ---------------------------------------------------
+  
+    //~ % --- new rhs ---
+    //~ [ systemDeltauRHS, FextG ]  = computeRHS( Conec, crossSecsParamsMat, coordsElemsMat, ...
+      //~ materialsParamsMat, KS, constantFext, variableFext, ...
+      //~ userLoadsFilename, currLoadFactor, nextLoadFactor, numericalMethodParams, ...
+      //~ neumdofs, nodalDispDamping, ...
+      //~ Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat ) ;
+    //~ % ---------------------------------------------------
+  
+    //~ % --- check convergence ---
+    //~ [booleanConverged, stopCritPar, deltaErrLoad ] = convergenceTest( numericalMethodParams, [], FextG(neumdofs), deltaured, Utp1k(neumdofs), dispIters, [], systemDeltauRHS ) ;
+    //~ % ---------------------------------------------------
+  
+    //~ % --- prints iteration info in file ---
+    //~ printSolverOutput( outputDir, problemName, timeIndex, [ 1 dispIters deltaErrLoad norm(deltaured) ] ) ;
+  
+  //~ end % iteration while
+  //~ % --------------------------------------------------------------------
+  
+  //~ Utp1       = Utp1k ;
+  //~ Udottp1    = Udottp1k ;
+  //~ Udotdottp1 = Udotdottp1k ;
+  
+  //~ % computes KTred at converged Uk
+  //~ KTtp1red = systemDeltauMatrix ;
+  
+  
+  
+  //~ % --------------------------------------------------------------------
+  
+  //~ Stresstp1 = assembler ( Conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Utp1, 3, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, elementsParamsMat ) ;
+  
+  
+  //~ % %%%%%%%%%%%%%%%%
+  //~ stabilityAnalysisFlag = stabilityAnalysisBoolean ;
+  //~ % %%%%%%%%%%%%%%%%
+  
+  //~ if stabilityAnalysisFlag == 2
+    //~ [ nKeigpos, nKeigneg, factorCrit ] = stabilityAnalysis ( KTtred, KTtp1red, currLoadFactor, nextLoadFactor ) ;
+  //~ elseif stabilityAnalysisFlag == 1
+    //~ [ nKeigpos, nKeigneg ] = stabilityAnalysis ( KTtred, KTtp1red, currLoadFactor, nextLoadFactor ) ;
+    //~ factorCrit = 0;
+  //~ else
+    //~ nKeigpos = 0;  nKeigneg = 0; factorCrit = 0 ;
+  //~ end
+  
+  
+  
+  //~ % prints iteration info in file
+  //~ printSolverOutput( ...
+    //~ outputDir, problemName, timeIndex+1, [ 2 nextLoadFactor dispIters stopCritPar nKeigpos nKeigneg ] ) ;
+  
+  
+  //~ % --- stores next step values ---
+  //~ U          = Utp1 ;
+  //~ Udot       = Udottp1  ;
+  //~ Udotdot    = Udotdottp1 ;
+  //~ convDeltau = Utp1 - Ut ;
+  //~ %
+  //~ Stress     = Stresstp1 ;
+  
+  //~ timeIndex  = timeIndex + 1 ;
+  
+  //~ currTime   = nextTime ;
+  //~ if solutionMethod == 2
+    //~ currTime = nextLoadFactor ;
+  //~ end
+  
+  //~ timeStepStopCrit = stopCritPar ;
+  //~ timeStepIters = dispIters ;

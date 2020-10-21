@@ -12,12 +12,16 @@ SRC= src
 
 # target: dependencies
 # TAB command to generate the target
-main: timeStepIteration.o
-	$(CXX) -o $(EXE) timeStepIteration.o $(CXXFLAGS)
+main: timeStepIteration.o nodes2dofs.o
+	$(CXX) -o $(EXE) timeStepIteration.o nodes2dofs.o $(CXXFLAGS)
 
 timeStepIteration.o:
 	$(CXX) $(CXXFLAGS) -c timeStepIteration.cpp
 
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+	
 clean:
 	rm $(EXE) *.o
 
