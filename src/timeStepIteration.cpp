@@ -366,6 +366,9 @@ void computeFext( vec constantFext, vec variableFext, double nextLoadFactor, \
   string userLoadsFilename, \
   vec & FextG ){
   
+  FextG.zeros();
+  
+  
   
 }
 // =============================================================================
@@ -375,16 +378,13 @@ void computeFext( vec constantFext, vec variableFext, double nextLoadFactor, \
 // =============================================================================
 // --- computeRHS ---
 // =============================================================================
-void computeRHS( vec & systemDeltauRHS, vec & FextG, \
-    imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
+void computeRHS( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     mat materialsParamsMat, sp_mat KS, vec constantFext, vec variableFext, \
     string userLoadsFilename, double currLoadFactor, \
     double nextLoadFactor, vec numericalMethodParams, uvec neumdofs, \
     double nodalDispDamping, vec Ut, vec Udott, vec Udotdott, vec Utp1, \
-    vec Udottp1, vec Udotdottp1, imat elementsParamsMat ){
-
-  systemDeltauRHS.zeros();
-  FextG.zeros();
+    vec Udottp1, vec Udotdottp1, imat elementsParamsMat, \
+    vec & systemDeltauRHS, vec & FextG ){
   
   int solutionMethod, stopTolIts, nLoadSteps ;
   double stopTolDeltau, stopTolForces, incremArcLen, targetLoadFactr, \
@@ -406,13 +406,16 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
   vec Fvis = fs(1,0) ;
   vec Fmas = fs(2,0) ;  
 
+cout << "holiii" << endl;
+
   computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename, \
     FextG ) ;
 
-  cout << neumdofs                << endl;
-  cout << Fint.elem( neumdofs-1 ) << endl ;
-  
-  //~ systemDeltauRHS = - ( Fint(neumdofs) - FextG(neumdofs) ) ;
+cout << "chauuu" << endl;
+
+  systemDeltauRHS = - ( Fint.elem( neumdofs-1 ) - FextG.elem( neumdofs-1 ) ) ;
+
+cout << "chufiii" << endl;
   
 }
 // =============================================================================
@@ -547,11 +550,11 @@ int main(){
   cout << "ndofspernode: " << ndofpnode << "neleems: " << nelems << endl;
 
   // --- compute RHS for initial guess ---
-  computeRHS( systemDeltauRHS, FextG, \
-    conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, \
+  computeRHS( conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, \
     constantFext, variableFext, userLoadsFilename, currLoadFactor, \
     nextLoadFactor, numericalMethodParams, neumdofs, nodalDispDamping, \
-    Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat ) ;
+    Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat, \
+    systemDeltauRHS, FextG ) ;
   // ---------------------------------------------------
 
   return 0;
