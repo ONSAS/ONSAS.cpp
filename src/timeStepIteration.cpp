@@ -222,11 +222,16 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
 // =====================================================================
 // assembler
 // =====================================================================
-void assembler(){
+void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
+  mat materialsParamsMat, sp_mat KS, vec Ut, int paramOut, vec Udott, \
+  vec Udotdott, double nodalDispDamping, int solutionMethod, \
+  imat elementsParamsMat, field<sp_mat> & fs ){
 
 
-
-
+  //~ field<sp_mat> assembled(3,1) ;
+  
+  
+  //~ assembled(0,0) = 1 ;
   
   //~ // -------------------------------------------------------------------
   //~ // calculos
@@ -306,7 +311,7 @@ void assembler(){
 
 
 
-void extractMethodParams( mat numericalMethodParams, int & solutionMethod, \
+void extractMethodParams( vec numericalMethodParams, int & solutionMethod, \
                           double & stopTolDeltau, double & stopTolForces,  \
                           int & stopTolIts, double & targetLoadFactr, \
                           int & nLoadSteps, double & incremArcLen, \
@@ -343,9 +348,9 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
     imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     mat materialsParamsMat, sp_mat KS, vec constantFext, vec variableFext, \
     string userLoadsFilename, double currLoadFactor, \
-    double nextLoadFactor, mat numericalMethodParams, ivec neumdofs, \
-    double nodalDispDamping, vec Ut, vec Udott, vec Udotdott, vec Utp1k, \
-    vec Udottp1k, vec Udotdottp1k, mat elementsParamsMat ){
+    double nextLoadFactor, vec numericalMethodParams, ivec neumdofs, \
+    double nodalDispDamping, vec Ut, vec Udott, vec Udotdott, vec Utp1, \
+    vec Udottp1, vec Udotdottp1, imat elementsParamsMat ){
 
   systemDeltauRHS.zeros();
   FextG.zeros();
@@ -355,16 +360,14 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
     deltaT, deltaNW, AlphaNW, alphaHHT, finalTime ;
 			  
   extractMethodParams  ( numericalMethodParams, solutionMethod, \
-                          stopTolDeltau, stopTolForces,  \
-                          stopTolIts, targetLoadFactr, \
-                          nLoadSteps, incremArcLen, \
-                          deltaT, deltaNW, AlphaNW, \
+                          stopTolDeltau, stopTolForces, stopTolIts, targetLoadFactr, \
+                          nLoadSteps, incremArcLen, deltaT, deltaNW, AlphaNW, \
                           alphaHHT, finalTime );
 			  
-
-  //~ fs = assembler ( ...
-    //~ Conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Utp1, 1, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, elementsParamsMat ) ;
+  field<sp_mat>  fs(3,1) ;
   
+  assembler ( conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Utp1, 1, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, elementsParamsMat, fs );
+
   //~ Fint = fs{1} ;  Fvis =  fs{2};  Fmas = fs{3} ;  
 
   //~ if solutionMethod <= 1
@@ -423,14 +426,31 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
     
   //~ end
     
-
-
-
-
-
   
   
+}
+// =============================================================================
+
+
+
+// =============================================================================
+//  updateTime
+// =============================================================================
+void updateTime( vec Ut, vec Udott, vec Udotdott, vec Utp1k, \
+  vec numericalMethodParams, double currTime, \
+  vec & Udottp1k, vec & Udotdottp1k, double & nextTime ){
+      
+  int solutionMethod, stopTolIts, nLoadSteps;
+  double stopTolDeltau, stopTolForces, targetLoadFactr, incremArcLen, deltaT, \
+    deltaNW, AlphaNW, alphaHHT, finalTime;
   
+  extractMethodParams( numericalMethodParams, solutionMethod, stopTolDeltau, \
+                       stopTolForces, stopTolIts, targetLoadFactr, nLoadSteps, \
+		       incremArcLen, deltaT, deltaNW, AlphaNW, alphaHHT, finalTime );
+
+  nextTime    = currTime + deltaT ;
+  Udotdottp1k = Udotdott          ;
+  Udottp1k    = Udott             ;
 }
 // =============================================================================
 
@@ -450,8 +470,8 @@ int main(){
   cout << "  reading inputs..." ;
   
   // declarations of variables read
-  imat conec                             ;
-  mat numericalMethodParams              ;
+  imat conec, elementsParamsMat                             ;
+  vec numericalMethodParams              ;
   sp_mat systemDeltauMatrix              ;
   sp_mat KS                              ;
   vec U, Udot, Udotdot, Fint, Fmas, Fvis ;
@@ -459,14 +479,25 @@ int main(){
   vec FextG, constantFext, variableFext  ;
   string userLoadsFilename               ;
   vec scalarParams                       ;
+
   scalarParams.load("scalarParams.dat")  ;
 
-  //~ double currLoadFactor                  ;
+  double currLoadFactor   = scalarParams(0) , \
+         nextLoadFactor   = scalarParams(1) , \
+	 nodalDispDamping = scalarParams(2) , \
+	 currTime         = scalarParams(3) ;
   
+  double nextTime ;
+
+  ivec neumdofs ;
+  
+  vec Udottp1k, Udotdottp1k ;
+
   ifstream ifile                         ;
   
   // reading
   conec.load("Conec.dat");
+  
   numericalMethodParams.load("numericalMethodParams.dat");
 
   systemDeltauMatrix.load("systemDeltauMatrix.dat", coord_ascii);
@@ -518,17 +549,20 @@ int main(){
   // assign disps and forces at time t
   vec Ut    = U    ;   vec Udott = Udot ;   vec Udotdott = Udotdot ;
   
-  // start iteration with previous displacements ---
-  vec Utp1k = Ut       ;   // initial guess
-  
+  vec Utp1k = Ut   ; // initial guess displacements
+  // initial guess velocities and accelerations
+
+  updateTime( Ut, Udott, Udotdott, Utp1k, numericalMethodParams, \
+    currTime, Udottp1k, Udotdottp1k, nextTime ) ;
+
   cout << "ndofspernode: " << ndofpnode << "neleems: " << nelems << endl;
 
   // --- compute RHS for initial guess ---
-  //~ computeRHS( systemDeltauRHS, FextG, \
-    //~ conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, \
-    //~ constantFext, variableFext, userLoadsFilename, currLoadFactor, \
-    //~ nextLoadFactor, numericalMethodParams, neumdofs, nodalDispDamping, \
-    //~ Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat ) ;
+  computeRHS( systemDeltauRHS, FextG, \
+    conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, \
+    constantFext, variableFext, userLoadsFilename, currLoadFactor, \
+    nextLoadFactor, numericalMethodParams, neumdofs, nodalDispDamping, \
+    Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat ) ;
   // ---------------------------------------------------
 
   return 0;
