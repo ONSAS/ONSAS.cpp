@@ -225,21 +225,37 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
 void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   mat materialsParamsMat, sp_mat KS, vec Ut, int paramOut, vec Udott, \
   vec Udotdott, double nodalDispDamping, int solutionMethod, \
-  imat elementsParamsMat, field<sp_mat> & fs ){
+  imat elementsParamsMat, field<vec> & fs, field<sp_mat> & ks ){
 
 
-  //~ field<sp_mat> assembled(3,1) ;
+  // -----------------------------------------------
+  int nElems  = conec.n_rows,     nNodes  = numel( Ut ) / 6 ;
+
+
+  // ====================================================================
+  //  --- 1 declarations ---
+  // ====================================================================
+
+  vec Fint( nNodes*6, fill::zeros ) ;
+
+  //~ if (paramOut == 1){
+    // -------  residual forces vector ------------------------------------
+    // --- creates Fint vector ---
+    //~ Fmas = zeros( nNodes*6 , 1 ) ;
+    //~ Fvis = zeros( nNodes*6 , 1 ) ;
+  //~ }
   
-  
-  //~ assembled(0,0) = 1 ;
-  
+  //~ field<vec> fs(3,1) ;
+    
   //~ // -------------------------------------------------------------------
   //~ // calculos
   //~ // -------------------------------------------------------------------
   
-  //~ vec FintGt = zeros<vec>(6*nnodes);
+  fs(0,0) = Fint ;
+  fs(1,0) = Fint ;
+  fs(2,0) = Fint ;
   
-  //~ int numIndexsKT = nelems*12*12 ;
+  int numIndexsKT = nElems*12*12 ;
   
   //~ vec indsIKT = zeros<vec>( numIndexsKT ) ;
   //~ vec indsJKT = zeros<vec>( numIndexsKT ) ;
@@ -256,7 +272,7 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   //~ vec hyperElasParamsVec(2) ;
   //~ ivec dofsTet(12) ;
   
-  //~ for( int elem = 1; elem <= nelems; elem++){
+  for( int elem = 1; elem <= nElems; elem++){
 //    cout << " elem: " << elem << endl;
     //~ nodesElem = ( conec( span(elem-1,elem-1), span(0,3) )).t(); 
     //~ dofsElem  = nodes2dofs( nodesElem , 6 ) ;
@@ -297,15 +313,15 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     //~ } // if paramOut 2
     
 
-  //~ } // ---   for elements -------------------------------
+  } // ---   for elements -------------------------------
   
   //~ FintGt.save("FintGt.dat", raw_ascii);
   
-  //~ if (paramOut == 2){  
+  if (paramOut == 2){  
     //~ indsIKT.save("indsIKT.dat", raw_ascii);
     //~ indsJKT.save("indsJKT.dat", raw_ascii);
     //~ valsIKT.save("valsIKT.dat", raw_ascii);
-  //~ }
+  }
   
 }
 
@@ -341,6 +357,21 @@ void extractMethodParams( vec numericalMethodParams, int & solutionMethod, \
 // =============================================================================
 
 
+
+
+// =============================================================================
+// --- computeFext ---
+// =============================================================================
+void computeFext( vec constantFext, vec variableFext, double nextLoadFactor, \
+  string userLoadsFilename, \
+  vec & FextG ){
+  
+  
+}
+// =============================================================================
+
+
+
 // =============================================================================
 // --- computeRHS ---
 // =============================================================================
@@ -348,7 +379,7 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
     imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     mat materialsParamsMat, sp_mat KS, vec constantFext, vec variableFext, \
     string userLoadsFilename, double currLoadFactor, \
-    double nextLoadFactor, vec numericalMethodParams, ivec neumdofs, \
+    double nextLoadFactor, vec numericalMethodParams, uvec neumdofs, \
     double nodalDispDamping, vec Ut, vec Udott, vec Udotdott, vec Utp1, \
     vec Udottp1, vec Udotdottp1, imat elementsParamsMat ){
 
@@ -364,69 +395,24 @@ void computeRHS( vec & systemDeltauRHS, vec & FextG, \
                           nLoadSteps, incremArcLen, deltaT, deltaNW, AlphaNW, \
                           alphaHHT, finalTime );
 			  
-  field<sp_mat>  fs(3,1) ;
+  field<vec>    fs(3,1) ;
+  field<sp_mat> ks(3,1) ;
   
-  assembler ( conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Utp1, 1, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, elementsParamsMat, fs );
+  assembler ( conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, \
+    KS, Utp1, 1, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, \
+    elementsParamsMat, fs, ks ) ;
 
-  //~ Fint = fs{1} ;  Fvis =  fs{2};  Fmas = fs{3} ;  
+  vec Fint = fs(0,0) ;
+  vec Fvis = fs(1,0) ;
+  vec Fmas = fs(2,0) ;  
 
-  //~ if solutionMethod <= 1
+  computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename, \
+    FextG ) ;
 
-    //~ FextG  = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
-    //~ systemDeltauRHS = - ( Fint(neumdofs) - FextG(neumdofs) ) ;
-
-  //~ elseif solutionMethod == 2
-    
-    //~ if norm(constantFext)>0 || ~(strcmp( userLoadsFilename , '')),
-      //~ error('load case not implemented yet for Arc-Length method');
-    //~ end
-    
-    //~ FextG  = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
-    
-    //~ % incremental displacement
-    //~ systemDeltauRHS = [ -(Fint(neumdofs)-FextG(neumdofs))  variableFext(neumdofs) ] ;
-
-  //~ elseif solutionMethod == 3
-
-    //~ FextG = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
-    
-    //~ rhat      =   Fint ( neumdofs ) ...
-                //~ + Fvis ( neumdofs ) ...
-                //~ + Fmas ( neumdofs ) ...
-                //~ - FextG( neumdofs ) ;
-                
-    //~ systemDeltauRHS = -rhat ;
-
-  //~ elseif solutionMethod == 4
-      
-    //~ fs = assembler ( ...
-      //~ Conec, crossSecsParamsMat, coordsElemsMat, materialsParamsMat, KS, Ut, 1, Udott, ...
-      //~ Udotdott, nodalDispDamping, solutionMethod, elementsParamsMat ) ;
-    
-    //~ Fintt = fs{1} ;  Fvist =  fs{2};  Fmast = fs{3} ;  
-
-    //~ FextG  = computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename ) ;
-    //~ FextGt = computeFext( constantFext, variableFext, currLoadFactor, userLoadsFilename ) ;
-                      
-    //~ rhat   =  ( 1 + alphaHHT ) * ( ...
-                //~ + Fint  ( neumdofs ) ...
-                //~ + Fvis  ( neumdofs ) ...
-                //~ - FextG ( neumdofs ) ...
-              //~ ) ...
-              //~ ...
-              //~ - alphaHHT * ( ...
-                //~ + Fintt ( neumdofs ) ...
-                //~ + Fvist ( neumdofs ) ...
-                //~ - FextGt( neumdofs ) ...
-                //~ ) ...
-              //~ ...
-              //~ + Fmas    ( neumdofs ) ;
-                
-    //~ systemDeltauRHS = -rhat ;
-    
-  //~ end
-    
+  cout << neumdofs                << endl;
+  cout << Fint.elem( neumdofs-1 ) << endl ;
   
+  //~ systemDeltauRHS = - ( Fint(neumdofs) - FextG(neumdofs) ) ;
   
 }
 // =============================================================================
@@ -489,8 +475,6 @@ int main(){
   
   double nextTime ;
 
-  ivec neumdofs ;
-  
   vec Udottp1k, Udotdottp1k ;
 
   ifstream ifile                         ;
@@ -516,12 +500,17 @@ int main(){
 
   constantFext.load("constantFext.dat");
   variableFext.load("variableFext.dat");
+  
+  vec auxvec; auxvec.load("neumdofs.dat");
+  uvec neumdofs = conv_to<uvec>::from( auxvec ) ;
+  
+  cout << "variableFext: " << variableFext << endl;
+  cout << "neumdofs: " << neumdofs << endl;
 
   mat crossSecsParamsMat, coordsElemsMat, materialsParamsMat;  
   
   cout << " done" << endl ;
   // ---------------------------------------------------------------------------
-  
 
 
   // ---------------------------------------------------------------------------
