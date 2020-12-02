@@ -28,7 +28,6 @@ using namespace std  ;
 using namespace arma ;
 
 
-
 // ==============================================================================
 mat shapeFunsDeriv ( double x, double y, double z ){
 
@@ -238,22 +237,22 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
 
   vec Fint( nNodes*6, fill::zeros ) ;
 
-  //~ if (paramOut == 1){
+    Fmas = zeros( nNodes*6 , 1 ) ;
+    Fvis = zeros( nNodes*6 , 1 ) ;
+
+
+  if (paramOut == 1){
     // -------  residual forces vector ------------------------------------
     // --- creates Fint vector ---
-    //~ Fmas = zeros( nNodes*6 , 1 ) ;
-    //~ Fvis = zeros( nNodes*6 , 1 ) ;
-  //~ }
-  
-  //~ field<vec> fs(3,1) ;
-    
-  //~ // -------------------------------------------------------------------
-  //~ // calculos
-  //~ // -------------------------------------------------------------------
+  }
+      
+  // -------------------------------------------------------------------
+  // calculos
+  // -------------------------------------------------------------------
   
   fs(0,0) = Fint ;
-  fs(1,0) = Fint ;
-  fs(2,0) = Fint ;
+  fs(1,0) = Fvis ;
+  fs(2,0) = Fmas ;
   
   int numIndexsKT = nElems*12*12 ;
   
@@ -366,10 +365,7 @@ void computeFext( vec constantFext, vec variableFext, double nextLoadFactor, \
   string userLoadsFilename, \
   vec & FextG ){
   
-  FextG.zeros();
-  
-  
-  
+  FextG  = variableFext * nextLoadFactor + constantFext  ;//+ FextUser  ;
 }
 // =============================================================================
 
@@ -402,21 +398,13 @@ void computeRHS( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     KS, Utp1, 1, Udottp1, Udotdottp1, nodalDispDamping, solutionMethod, \
     elementsParamsMat, fs, ks ) ;
 
-  vec Fint = fs(0,0) ;
-  vec Fvis = fs(1,0) ;
-  vec Fmas = fs(2,0) ;  
-
-cout << "holiii" << endl;
+  vec Fint = fs(0,0) ;  vec Fvis = fs(1,0) ;   vec Fmas = fs(2,0) ;  
 
   computeFext( constantFext, variableFext, nextLoadFactor, userLoadsFilename, \
     FextG ) ;
 
-cout << "chauuu" << endl;
-
   systemDeltauRHS = - ( Fint.elem( neumdofs-1 ) - FextG.elem( neumdofs-1 ) ) ;
-
-cout << "chufiii" << endl;
-  
+ 
 }
 // =============================================================================
 
