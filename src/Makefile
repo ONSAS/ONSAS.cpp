@@ -1,26 +1,28 @@
 # based on https://www.cs.bu.edu/teaching/cpp/writing-makefiles/
 
+# directorios
+HDIR    = ../include
+CXXDIR  = src
+ODIR    = obj
+
 # compiler
 CXX = g++
 
 # flag of compiler
-CXXFLAGS = -Wall -g -O2 -larmadillo
+CXXFLAGS = -Wall -I$(HDIR) -g -O2 -larmadillo
 
 EXE = timeStepIteration.lnx
 
-SRC= src
-
 # target: dependencies
 # TAB command to generate the target
-main: timeStepIteration.o nodes2dofs.o
-	$(CXX) -o $(EXE) timeStepIteration.o nodes2dofs.o $(CXXFLAGS)
+main: timeStepIteration.o shapeFunsDeriv.o cosseratSVK.o
+	$(CXX) -o $(EXE) timeStepIteration.o shapeFunsDeriv.o cosseratSVK.o $(CXXFLAGS)
 
 timeStepIteration.o:
 	$(CXX) $(CXXFLAGS) -c timeStepIteration.cpp
 
-
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $<
+%.o: %.cpp %.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 	
 clean:
 	rm $(EXE) *.o

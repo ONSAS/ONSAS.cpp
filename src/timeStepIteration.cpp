@@ -17,6 +17,9 @@
 
 #include <iostream>      /* printf */
 #include <armadillo>
+
+#include <../include/shapeFunsDeriv.h>
+#include <../include/cosseratSVK.h>
 //~ #include <cstdlib>   // funciones como atoi y atof
 //~ #include <ctime>
 //~ #include <stdio.h>      /* printf */
@@ -26,39 +29,6 @@
 
 using namespace std  ;
 using namespace arma ;
-
-
-// ==============================================================================
-mat shapeFunsDeriv ( double x, double y, double z ){
-
-  mat fun = zeros<mat>( 3, 4 ) ;
-  fun( 0, 0 ) =  1 ;
-  fun( 0, 1 ) = -1 ;
-  fun( 1, 1 ) = -1 ;
-  fun( 2, 1 ) = -1 ;
-  fun( 2, 2 ) =  1 ;
-  fun( 1, 3 ) =  1 ;
-
-  return fun;
-}
-
-
-// ======================================================================
-//
-// ======================================================================
-mat cosseratSVK ( vec hyperElasParamsVec, mat Egreen){
-
-  double young = hyperElasParamsVec(0)       ;
-  double nu    = hyperElasParamsVec(1)       ;
-
-  double lambda  = young * nu / ( (1.0 + nu) * (1.0 - 2.0*nu) ) ;
-  double shear   = young      / ( 2.0 * (1.0 + nu) )          ;
-  
-  return lambda * trace( Egreen ) * eye(3,3)  +  2.0 * shear * Egreen ;
-}
-// ==============================================================================
-
-
 
 // ======================================================================
 //
@@ -237,8 +207,8 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
 
   vec Fint( nNodes*6, fill::zeros ) ;
 
-    Fmas = zeros( nNodes*6 , 1 ) ;
-    Fvis = zeros( nNodes*6 , 1 ) ;
+  vec Fmas = zeros( nNodes*6 , 1 ) ;
+  vec Fvis = zeros( nNodes*6 , 1 ) ;
 
 
   if (paramOut == 1){
