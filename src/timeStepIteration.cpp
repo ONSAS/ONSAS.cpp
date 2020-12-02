@@ -27,6 +27,20 @@
 using namespace std  ;
 using namespace arma ;
 
+// ==============================================================================
+
+ivec nodes2dofs( ivec nodes, int degreesPerNode ){
+
+  int  n    = nodes.n_elem ;
+  ivec dofs = zeros<ivec>( degreesPerNode * n ) ;
+  
+  for ( int i=0; i<n ; i++){
+    for ( int j=0; j< degreesPerNode; j++){
+      dofs( i * degreesPerNode + j ) = degreesPerNode*( nodes(i) - 1 ) + ( j+1 ) ;
+    }
+  }  
+  return dofs;
+}
 
 // ==============================================================================
 mat shapeFunsDeriv ( double x, double y, double z ){
@@ -147,24 +161,15 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
 
   Finte = zeros<vec>( 12 ) ; 
   
-  //~ eledispmat = reshape( Ue, 3,4) ;
-  //~ elecoordspa = tetCoordMat + eledispmat ;
-
   double xi = 0.25, wi = 1.0/6.0  ;
       
   // matriz de derivadas de fun forma respecto a coordenadas isoparametricas
   mat deriv = shapeFunsDeriv( xi, xi , xi )  ;
 
-
   // jacobiano que relaciona coordenadas materiales con isoparametricas
   mat jacobianMat ;
   
   jacobianMat = tetCoordMat * deriv.t() ;
-
-//~ cout << "-------------------" << endl;
-//~ cout << "deriv:" << deriv << endl;
-//~ cout << "tetcoordmat:" << tetCoordMat << endl;
-//~ cout << "jacobianmat:" << jacobianMat << endl;
   
   double vol = det( jacobianMat ) * wi ;
   
@@ -178,11 +183,8 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
   
   mat F = H + eye(3,3);
 
-
   mat Egreen = 0.5 * ( H + H.t() + H.t() * H ) ;
 
-//~ cout << "Engree: " << Egreen << endl;
-  
   mat S = cosseratSVK( hyperElasParamsVec, Egreen) ;
 
   mat matBgrande = BgrandeMats ( funder , F ) ;
@@ -215,9 +217,6 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
 
 
 
-
-
-
 // =====================================================================
 // assembler
 // =====================================================================
@@ -225,8 +224,7 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   mat materialsParamsMat, sp_mat KS, vec Ut, int paramOut, vec Udott, \
   vec Udotdott, double nodalDispDamping, int solutionMethod, \
   imat elementsParamsMat, field<vec> & fs, field<sp_mat> & ks ){
-
-
+  
   // -----------------------------------------------
   int nElems  = conec.n_rows,     nNodes  = numel( Ut ) / 6 ;
 
@@ -236,11 +234,11 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   // ====================================================================
 
   vec Fint( nNodes*6, fill::zeros ) ;
+  vec Fmas = zeros( nNodes*6 , 1 ) ;
+  vec Fvis = zeros( nNodes*6 , 1 ) ;
 
-    Fmas = zeros( nNodes*6 , 1 ) ;
-    Fvis = zeros( nNodes*6 , 1 ) ;
-
-
+  cout << paramOut << endl;
+  
   if (paramOut == 1){
     // -------  residual forces vector ------------------------------------
     // --- creates Fint vector ---
@@ -254,8 +252,7 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   fs(1,0) = Fvis ;
   fs(2,0) = Fmas ;
   
-  int numIndexsKT = nElems*12*12 ;
-  
+  //~ int numIndexsKT = nElems*12*12 ;
   //~ vec indsIKT = zeros<vec>( numIndexsKT ) ;
   //~ vec indsJKT = zeros<vec>( numIndexsKT ) ;
   //~ vec valsIKT = zeros<vec>( numIndexsKT ) ;
@@ -272,10 +269,28 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   //~ ivec dofsTet(12) ;
   
   for( int elem = 1; elem <= nElems; elem++){
-//    cout << " elem: " << elem << endl;
-    //~ nodesElem = ( conec( span(elem-1,elem-1), span(0,3) )).t(); 
-    //~ dofsElem  = nodes2dofs( nodesElem , 6 ) ;
 
+    cout << " elem: " << elem << endl;
+cout << conec( elem-1, 5-1) << endl;
+cout << conec << endl;
+cout << materialsParamsMat << endl;
+
+    vec elemMaterialParams = materialsParamsMat.row( conec( elem-1, 5-1 )-1 ).t() ;
+    
+    cout << elemMaterialParams << endl;
+    
+    //~ elemrho                = elemMaterialParams( 1     )              ;
+    //~ elemConstitutiveParams = elemMaterialParams( 2:end )             ;
+
+    
+    //~ cout << conec( span(elem-1,elem-1), span(0,3) ) << endl;
+    
+    //~ ivec nodesElem = ( conec( span(elem-1,elem-1), span(0,3) ) ).t(); 
+        
+    //~ ivec dofsElem = nodes2dofs( nodesElem , 6 ) ;
+
+    //~ cout << "dofs elem: " << dofsElem << endl;
+    
     //~ for (int indi=1; indi<= 12; indi++){
       //~ dofsTet( indi-1 ) = dofsElem( (indi-1)*2 ) ;
     //~ }
@@ -433,6 +448,18 @@ void updateTime( vec Ut, vec Udott, vec Udotdott, vec Utp1k, \
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 // =============================================================================
 //  main
 // =============================================================================
@@ -499,6 +526,8 @@ int main(){
   cout << "neumdofs: " << neumdofs << endl;
 
   mat crossSecsParamsMat, coordsElemsMat, materialsParamsMat;  
+
+  materialsParamsMat.load("materialsParamsMat.dat");
   
   cout << " done" << endl ;
   // ---------------------------------------------------------------------------
