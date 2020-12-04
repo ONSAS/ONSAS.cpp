@@ -43,34 +43,64 @@ ivec nodes2dofs( ivec nodes, int degreesPerNode ){
 }
 
 // ==============================================================================
+//
+// ======================================================================
 mat shapeFunsDeriv ( double x, double y, double z ){
 
-  mat fun = zeros<mat>( 3, 4 ) ;
+  mat fun = zeros<mat>( 4, 3 ) ;
   fun( 0, 0 ) =  1 ;
-  fun( 0, 1 ) = -1 ;
+  fun( 1, 0 ) = -1 ;
   fun( 1, 1 ) = -1 ;
-  fun( 2, 1 ) = -1 ;
+  fun( 1, 2 ) = -1 ;
   fun( 2, 2 ) =  1 ;
-  fun( 1, 3 ) =  1 ;
+  fun( 3, 1 ) =  1 ;
 
   return fun;
 }
+// ======================================================================
+
+
+
 
 
 // ======================================================================
 //
 // ======================================================================
-mat cosseratSVK ( vec hyperElasParamsVec, mat Egreen){
+void cosseratSVK ( vec consParams, mat Egreen, int consMatFlag, mat & S, mat & ConsMat ){
 
-  double young = hyperElasParamsVec(0)       ;
-  double nu    = hyperElasParamsVec(1)       ;
-
-  double lambda  = young * nu / ( (1.0 + nu) * (1.0 - 2.0*nu) ) ;
-  double shear   = young      / ( 2.0 * (1.0 + nu) )          ;
+  double young  = consParams(1-1) ;
+  double nu     = consParams(2-1) ;
   
-  return lambda * trace( Egreen ) * eye(3,3)  +  2.0 * shear * Egreen ;
+  double lambda = young * nu / ( (1 + nu) * (1 - 2*nu) ) ;
+  double shear  = young      / ( 2 * (1 + nu) )          ;
+  
+  S      = lambda * trace(Egreen) * eye(3,3) + 2 * shear * Egreen ;
+  ConsMat.zeros();
+
+  if (consMatFlag == 1){ // complex-step computation expression
+    //~ //ConsMat = zeros(6,6);
+    //~ //ConsMat = complexStepConsMat( 'cosseratSVK', consParams, Egreen ) ;
+  }else if (consMatFlag == 2){ // analytical expression
+    ConsMat (1-1,1-1) = ( shear / (1 - 2 * nu) ) * 2 * ( 1-nu  ) ; 
+    ConsMat (1-1,2-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu  ) ; 
+    ConsMat (1-1,3-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu  ) ; 
+  
+    ConsMat (2-1,1-1) = ( shear / (1 - 2 * nu) ) * 2 * (    nu ) ;
+    ConsMat (2-1,2-1) = ( shear / (1 - 2 * nu) ) * 2 * (  1-nu ) ;
+    ConsMat (2-1,3-1) = ( shear / (1 - 2 * nu) ) * 2 * (    nu ) ;
+    
+    ConsMat (3-1,1-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu ) ;
+    ConsMat (3-1,2-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu ) ;
+    ConsMat (3-1,3-1) = ( shear / (1 - 2 * nu) ) * 2 * ( 1-nu ) ;
+    
+    ConsMat (4-1,4-1 ) = shear ;
+    ConsMat (5-1,5-1 ) = shear ;
+    ConsMat (6-1,6-1 ) = shear ;
+  }
 }
 // ==============================================================================
+
+
 
 
 
@@ -103,16 +133,16 @@ mat BgrandeMats ( mat deriv , mat F ){
 
 
 // ======================================================================
-vec tranvoigSin2( mat Tensor){
+vec mat2voigt( mat Tensor, double factor ){
     
   vec v = zeros<vec>(6);
     
   v(1-1) = Tensor(1-1,1-1) ;
   v(2-1) = Tensor(2-1,2-1) ;
   v(3-1) = Tensor(3-1,3-1) ;
-  v(4-1) = Tensor(2-1,3-1) ;
-  v(5-1) = Tensor(1-1,3-1) ;
-  v(6-1) = Tensor(1-1,2-1) ;
+  v(4-1) = Tensor(2-1,3-1)*factor ;
+  v(5-1) = Tensor(1-1,3-1)*factor ;
+  v(6-1) = Tensor(1-1,2-1)*factor ;
   
   return v;
 }
@@ -122,34 +152,20 @@ vec tranvoigSin2( mat Tensor){
 
 // ======================================================================
 //
-// ======================================================================
-mat constTensor ( vec hyperElasParamsVec, mat Egreen ){
+//~ // ======================================================================
+//~ mat constTensor ( vec hyperElasParamsVec, mat Egreen ){
 
-  mat ConsMat = zeros<mat> (6,6);
+  //~ mat ConsMat = zeros<mat> (6,6);
   
-  double young = hyperElasParamsVec(0)       ;
-  double nu = hyperElasParamsVec(1)          ;
-  double shear   = young / ( 2.0 * (1+ nu) ) ;
+  //~ double young = hyperElasParamsVec(0)       ;
+  //~ double nu = hyperElasParamsVec(1)          ;
+  //~ double shear   = young / ( 2.0 * (1+ nu) ) ;
 
-  ConsMat (1-1,1-1) = ( shear / (1 - 2 * nu) ) * 2 * ( 1-nu  ) ; 
-  ConsMat (1-1,2-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu  ) ; 
-  ConsMat (1-1,3-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu  ) ; 
 
-  ConsMat (2-1,1-1) = ( shear / (1 - 2 * nu) ) * 2 * (    nu ) ;
-  ConsMat (2-1,2-1) = ( shear / (1 - 2 * nu) ) * 2 * (  1-nu ) ;
-  ConsMat (2-1,3-1) = ( shear / (1 - 2 * nu) ) * 2 * (    nu ) ;
-  
-  ConsMat (3-1,1-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu ) ;
-  ConsMat (3-1,2-1) = ( shear / (1 - 2 * nu) ) * 2 * (   nu ) ;
-  ConsMat (3-1,3-1) = ( shear / (1 - 2 * nu) ) * 2 * ( 1-nu ) ;
-  
-  ConsMat (4-1,4-1 ) = shear ;
-  ConsMat (5-1,5-1 ) = shear ;
-  ConsMat (6-1,6-1 ) = shear ;
+  //~ return ConsMat;
+//~ }
+//~ // ======================================================================
 
-  return ConsMat;
-}
-// ======================================================================
 
 
 
@@ -157,63 +173,101 @@ mat constTensor ( vec hyperElasParamsVec, mat Egreen ){
 // =====================================================================
 //  elementTetraSVKSolidInternLoadsTangMat
 // =====================================================================
-void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, vec  hyperElasParamsVec, int paramOut, vec& Finte, mat& KTe){
-
-  Finte = zeros<vec>( 12 ) ; 
+void elementTetraSolid( vec elemCoords, vec elemDisps, vec elemConstitutiveParams, \
+    int paramOut, int consMatFlag, double elemrho, vec & Finte, mat & KTe ){
   
-  double xi = 0.25, wi = 1.0/6.0  ;
-      
+    // reset element forces
+  Finte.zeros();  KTe.zeros();
+
+  //~ %~ [ deriv , vol ] =  DerivFun( tetCoordMat ) ;
+  //~ %~ tetVol = vol ;
+  //~ %~ BMat = BMats ( deriv ) ;
+
+  mat eleCoordMat = reshape( elemCoords, 3, 4 ) ;
+  mat eleDispsMat = reshape( elemDisps , 3, 4 ) ;
+  //~ mat eleCoordSpa = tetCoordMat + eleDispsMat ;
+
   // matriz de derivadas de fun forma respecto a coordenadas isoparametricas
-  mat deriv = shapeFunsDeriv( xi, xi , xi )  ;
+  double xi = 0.25 ;  double wi = 1.0 / 6.0  ;
+  mat deriv = shapeFunsDeriv( xi, xi , xi ) ;
 
   // jacobiano que relaciona coordenadas materiales con isoparametricas
-  mat jacobianMat ;
-  
-  jacobianMat = tetCoordMat * deriv.t() ;
-  
-  double vol = det( jacobianMat ) * wi ;
-  
+  mat jacobianmat = eleCoordMat * deriv  ;
+
+  double vol = det( jacobianmat ) * wi ;
+
   if (vol<0){
-    cout << "Element with negative volume, check connectivity." << endl;
+    cout << "Element with negative volume" << vol << " check connectivity." << endl;
     exit(0);
   }
-
-  mat funder = inv(jacobianMat).t() * deriv ;
-  mat H = elemDispMat * funder.t() ;
   
-  mat F = H + eye(3,3);
+  cout << vol << endl;
 
+  // displacement gradient
+  mat funder = deriv * inv(jacobianmat) ;
+  mat H = eleDispsMat * funder ;
+  mat F = H + eye(3,3) ;
   mat Egreen = 0.5 * ( H + H.t() + H.t() * H ) ;
 
-  mat S = cosseratSVK( hyperElasParamsVec, Egreen) ;
+  mat S, ConsMat(6,6);
+  
+  if (elemConstitutiveParams(1-1) == 2){ // Saint-Venant-Kirchhoff compressible solid
+    cosseratSVK( elemConstitutiveParams(span(2-1,3-1)), Egreen, consMatFlag, S, ConsMat );
+  //~ }else if (elemConstitutiveParams(1-1) == 3){ // Neo-Hookean Compressible
+    //~ [ S, ConsMat ] = cosseratNH ( elemConstitutiveParams(2:3), Egreen, consMatFlag ) ;
+  }
 
-  mat matBgrande = BgrandeMats ( funder , F ) ;
-     
-  vec Svoigt = tranvoigSin2( S ) ;
-  
-  mat ConsMat = constTensor ( hyperElasParamsVec, Egreen ) ;
-  
-  
-  //~ %~ Scons = ConsMat * tranvoigCon2(Egreen) ;
+  mat matBgrande = BgrandeMats ( funder.t() , F ) ;
+
+  vec Svoigt = mat2voigt( S, 1 ) ;
 
   Finte  = matBgrande.t() * Svoigt * vol ;
-    
-  if (paramOut == 2){
 
+  if (paramOut == 2){
     mat Kml        = matBgrande.t() * ConsMat * matBgrande * vol ;
-    mat matauxgeom = funder.t() * S * funder  * vol ;
+    mat matauxgeom = funder * S * funder.t()  * vol ;
     mat Kgl        = zeros<mat>(12,12) ;
-    for (int i=1; i<=4 ; i++){
+    for   (int i=1; i<=4; i++){
       for (int j=1; j<=4; j++){
-        Kgl( (i-1)*3+1-1 , (j-1)*3+1-1 ) = matauxgeom(i-1, j-1);
-        Kgl( (i-1)*3+2-1 , (j-1)*3+2-1 ) = matauxgeom(i-1, j-1);
-        Kgl( (i-1)*3+3-1 , (j-1)*3+3-1 ) = matauxgeom(i-1, j-1);
+        Kgl( (i-1)*3+1-1 , (j-1)*3+1-1 ) = matauxgeom( i-1, j-1 ) ;
+        Kgl( (i-1)*3+2-1 , (j-1)*3+2-1 ) = matauxgeom( i-1, j-1 ) ;
+        Kgl( (i-1)*3+3-1 , (j-1)*3+3-1 ) = matauxgeom( i-1, j-1 ) ;
       }
     }
     KTe = Kml + Kgl ;
-  } // if param out
+  }
+
 }
 // =====================================================================
+
+
+
+
+
+
+// =====================================================================
+//
+// =====================================================================
+void elementTypeInfo( int elemType, int & numNodes, int & dofsStep ){
+
+  if ( elemType == 1){
+    numNodes = 1 ;
+    dofsStep = 1 ;
+  }else if ( elemType == 2){
+    numNodes = 2 ;
+    dofsStep = 2 ;
+  }else if ( elemType == 3){
+    numNodes = 2 ;
+    dofsStep = 1 ;
+  }else if ( elemType == 4){
+    numNodes = 4 ;
+    dofsStep = 2 ;
+  }
+}
+// =============================================================================
+
+
+
 
 
 
@@ -223,124 +277,135 @@ void elementTetraSVKSolidInternLoadsTangMat( mat tetCoordMat, mat elemDispMat, v
 void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   mat materialsParamsMat, sp_mat KS, vec Ut, int paramOut, vec Udott, \
   vec Udotdott, double nodalDispDamping, int solutionMethod, \
-  imat elementsParamsMat, field<vec> & fs, field<sp_mat> & ks ){
+  mat elementsParamsMat, field<vec> & fs, field<sp_mat> & ks ){
   
-  // -----------------------------------------------
-  int nElems  = conec.n_rows,     nNodes  = numel( Ut ) / 6 ;
-
-
   // ====================================================================
   //  --- 1 declarations ---
   // ====================================================================
 
-  vec Fint( nNodes*6, fill::zeros ) ;
-  vec Fmas = zeros( nNodes*6 , 1 ) ;
-  vec Fvis = zeros( nNodes*6 , 1 ) ;
-
-  cout << paramOut << endl;
+  // -----------------------------------------------
+  int nElems  = conec.n_rows,     nNodes  = numel( Ut ) / 6 ;
+  int typeElem, numNodes, dofsStep ; // numNodes is the number of nodes per element
+  double elemrho;
   
-  if (paramOut == 1){
+  vec Fint( nNodes*6, fill::zeros ) ;
+  vec Fmas( nNodes*6, fill::zeros ) ;
+  vec Fvis( nNodes*6, fill::zeros ) ;
+  
+  //~ if (paramOut == 1){
     // -------  residual forces vector ------------------------------------
     // --- creates Fint vector ---
-  }
-      
-  // -------------------------------------------------------------------
-  // calculos
-  // -------------------------------------------------------------------
+   //~ }
+   
+  int indTotal = 0 ;
   
-  fs(0,0) = Fint ;
-  fs(1,0) = Fvis ;
-  fs(2,0) = Fmas ;
+  vec Finte(12) ; 
+  mat KTe(12,12);
   
-  //~ int numIndexsKT = nElems*12*12 ;
-  //~ vec indsIKT = zeros<vec>( numIndexsKT ) ;
-  //~ vec indsJKT = zeros<vec>( numIndexsKT ) ;
-  //~ vec valsIKT = zeros<vec>( numIndexsKT ) ;
-  //~ int indTotal = 0;
+  ivec nodeselem, dofselem;
+  
+  //~ ivec indsIKT( nElems*24*24, fill::zeros ) ;
+  //~ ivec indsJKT( nElems*24*24, fill::zeros ) ;
+  
+  umat locsKT( 2, nElems*24*24, fill::zeros );
+  vec  valsKT(    nElems*24*24, fill::zeros ) ;
 
-  //~ vec Finte(12) ; 
-  //~ mat KTe(12,12);
-    
-  //~ ivec nodesElem, dofsElem;
-
-  //~ mat tetCoordMat = zeros<mat>(3,4);
-  //~ mat elemDispMat = zeros<mat>(3,4);
-  //~ vec hyperElasParamsVec(2) ;
-  //~ ivec dofsTet(12) ;
-  
   for( int elem = 1; elem <= nElems; elem++){
 
     cout << " elem: " << elem << endl;
-cout << conec( elem-1, 5-1) << endl;
-cout << conec << endl;
-cout << materialsParamsMat << endl;
 
-    vec elemMaterialParams = materialsParamsMat.row( conec( elem-1, 5-1 )-1 ).t() ;
-    
-    cout << elemMaterialParams << endl;
-    
-    //~ elemrho                = elemMaterialParams( 1     )              ;
-    //~ elemConstitutiveParams = elemMaterialParams( 2:end )             ;
+    // material parameters
+    vec elemMaterialParams     = materialsParamsMat.row( conec( elem-1, 5-1 )-1 ).t() ;
+    elemrho                    = elemMaterialParams( 1 - 1 ) ;
+    vec elemConstitutiveParams = elemMaterialParams.rows( 2-1 , elemMaterialParams.n_elem-1 ) ;
 
+    // element parameters
+    vec elemElementParams      = elementsParamsMat.row( conec( elem-1, 6-1 )-1 ).t()  ;
     
-    //~ cout << conec( span(elem-1,elem-1), span(0,3) ) << endl;
+    typeElem = elemElementParams(1-1) ;
     
-    //~ ivec nodesElem = ( conec( span(elem-1,elem-1), span(0,3) ) ).t(); 
-        
-    //~ ivec dofsElem = nodes2dofs( nodesElem , 6 ) ;
+    elementTypeInfo ( typeElem, numNodes, dofsStep ) ;
 
-    //~ cout << "dofs elem: " << dofsElem << endl;
+    // obtains nodes and dofs of element
+    nodeselem   = conec( elem-1, span(1-1,numNodes-1) ).t()      ;
+    dofselem    = nodes2dofs( nodeselem , 6 )  ;
     
-    //~ for (int indi=1; indi<= 12; indi++){
-      //~ dofsTet( indi-1 ) = dofsElem( (indi-1)*2 ) ;
-    //~ }
+    ivec dofselemRed( 4*6/2 ) ;
+    vec elemCoords( 4*6/2 );
+    vec elemDisps( 4*6/2);
+    
+    for ( int ind=1; ind <= (4*3); ind++ ){
+      dofselemRed( ind-1) = dofselem ( 2*(ind-1)+1-1 ) ;
+      elemCoords( ind-1)  = coordsElemsMat( elem-1, 2*(ind-1)+1-1 ) ;
+      elemDisps( ind-1)   = Ut( dofselem ( 2*(ind-1)+1-1 ) -1 ) ;
+    }
+    
+    if ( typeElem == 4){
+      elementTetraSolid( elemCoords, elemDisps, elemConstitutiveParams, paramOut, elemElementParams(2-1), elemrho, Finte, KTe ) ;
+    }
 
-    //~ for (int indi=1; indi<= 3; indi++){
-      //~ for (int indj=1; indj<= 4; indj++){
-        //~ tetCoordMat( indi-1, indj-1 ) = coordsElemsMat(elem-1, (indi-1)*2 + (indj-1)*6 ) ;
-        //~ elemDispMat( indi-1, indj-1 ) = Ut( dofsElem ( (indi-1)*2 + (indj-1)*6 ) -1 ) ;
-      //~ }
-    //~ }
 
-    //~ hyperElasParamsVec(0) = hyperElasParamsMat( conec(elem-1,5-1)-1 , 1 ) ;
-    //~ hyperElasParamsVec(1) = hyperElasParamsMat( conec(elem-1,5-1)-1 , 2 ) ;
+    // assembly Fint
+    for (int indi=1; indi<= 12; indi++){
+      Fint( dofselemRed( indi-1 )-1 ) = Fint( dofselemRed( indi-1 )-1 ) + Finte( indi-1 ) ;
+    }
     
-    //~ // --- computes internal loads or tanget matrix ---
-    //~ elementTetraSVKSolidInternLoadsTangMat( tetCoordMat, elemDispMat, hyperElasParamsVec, paramOut, Finte, KTe) ;
-    
-    //~ // assembly Fint
-    //~ for (int indi=1; indi<= 12; indi++){
-      //~ FintGt( dofsTet( indi-1 ) -1) = FintGt( dofsTet( indi-1 ) -1) + Finte( indi-1 ) ;
-    //~ }
-    
-    //~ if (paramOut == 2){  
-//          indVec = (indRow+1)/2 ;
-      //~ for (int indi=1; indi<=12; indi++){
-        //~ for (int indj=1; indj<=12; indj++){
-          //~ indTotal++;     
-        
-          //~ indsIKT ( indTotal-1 ) = dofsTet( indi-1 )     ;
-          //~ indsJKT ( indTotal-1 ) = dofsTet( indj-1 )     ;  
-          //~ valsIKT ( indTotal-1 ) = KTe( indi-1, indj-1 ) ;
-        //~ }     
-      //~ }
-    //~ } // if paramOut 2
+    if (paramOut == 2){  
+
+      for ( int indi=1; indi<=12; indi++){
+        for ( int indj=1; indj<=12; indj++){
+          indTotal++;     
+          //~ indsIKT ( indTotal-1 ) = dofselemRed( indi-1 ) ;
+          //~ indsJKT ( indTotal-1 ) = dofselemRed( indj-1 ) ;  
+          
+	  locsKT ( 0, indTotal-1 ) = dofselemRed( indi-1 ) ;
+	  locsKT ( 1, indTotal-1 ) = dofselemRed( indj-1 ) ;
+
+          valsKT ( indTotal-1 ) = KTe( indi-1, indj-1 ) ;
+        }     
+      }
+
+      //~ for ( int indRow = 1; indRow <= 12; indRow++ ){
+
+        //~ entriesSparseStorVecs = counterInds + (1:length( dofselemRed) ) ;
+
+        //~ indsIK ( entriesSparseStorVecs  ) = dofselemRed( indRow )     ;
+        //~ indsJK ( entriesSparseStorVecs )  = dofselemRed       ;
+        //~ valsK  ( entriesSparseStorVecs )  = Ke( indRow, : )' ;
+
+        //~ if solutionMethod > 2
+          //~ valsM( entriesSparseStorVecs ) = Mmase( indRow, : )' ;
+          //~ if exist('Ce')~=0
+            //~ valsC( entriesSparseStorVecs ) = Ce   ( indRow, : )' ;
+          //~ end
+        //~ end
+
+        //~ counterInds = counterInds + length( dofselemRed ) ;
+      //~ end
+
+    } // if paramOut 2
     
 
   } // ---   for elements -------------------------------
   
-  //~ FintGt.save("FintGt.dat", raw_ascii);
-  
-  if (paramOut == 2){  
-    //~ indsIKT.save("indsIKT.dat", raw_ascii);
-    //~ indsJKT.save("indsJKT.dat", raw_ascii);
-    //~ valsIKT.save("valsIKT.dat", raw_ascii);
-  }
-  
+    // -------------------------------------------------------------------  
+  fs(0,0) = Fint ;   fs(1,0) = Fvis ;   fs(2,0) = Fmas ;
+
+  sp_mat aux(locsKT, valsKT);
+
+  cout << aux << endl;
+
+  ks(0,0) = aux ;
+
 }
+// =============================================================================
 
 
 
+
+// =============================================================================
+// --- extractMethodParams ---
+// =============================================================================
 void extractMethodParams( vec numericalMethodParams, int & solutionMethod, \
                           double & stopTolDeltau, double & stopTolForces,  \
                           int & stopTolIts, double & targetLoadFactr, \
@@ -386,6 +451,10 @@ void computeFext( vec constantFext, vec variableFext, double nextLoadFactor, \
 
 
 
+
+
+
+
 // =============================================================================
 // --- computeRHS ---
 // =============================================================================
@@ -394,7 +463,7 @@ void computeRHS( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     string userLoadsFilename, double currLoadFactor, \
     double nextLoadFactor, vec numericalMethodParams, uvec neumdofs, \
     double nodalDispDamping, vec Ut, vec Udott, vec Udotdott, vec Utp1, \
-    vec Udottp1, vec Udotdottp1, imat elementsParamsMat, \
+    vec Udottp1, vec Udotdottp1, mat elementsParamsMat, \
     vec & systemDeltauRHS, vec & FextG ){
   
   int solutionMethod, stopTolIts, nLoadSteps ;
@@ -474,7 +543,7 @@ int main(){
   cout << "  reading inputs..." ;
   
   // declarations of variables read
-  imat conec, elementsParamsMat                             ;
+  imat conec                             ;
   vec numericalMethodParams              ;
   sp_mat systemDeltauMatrix              ;
   sp_mat KS                              ;
@@ -525,9 +594,14 @@ int main(){
   cout << "variableFext: " << variableFext << endl;
   cout << "neumdofs: " << neumdofs << endl;
 
-  mat crossSecsParamsMat, coordsElemsMat, materialsParamsMat;  
+  mat coordsElemsMat ;
+  
+  // MELCS parameters matrices
+  mat materialsParamsMat, elementsParamsMat, crossSecsParamsMat;  
 
-  materialsParamsMat.load("materialsParamsMat.dat");
+  materialsParamsMat.load("materialsParamsMat.dat") ;
+  elementsParamsMat.load( "elementsParamsMat.dat" ) ;
+  coordsElemsMat.load( "coordsElemsMat.dat" ) ;
   
   cout << " done" << endl ;
   // ---------------------------------------------------------------------------
