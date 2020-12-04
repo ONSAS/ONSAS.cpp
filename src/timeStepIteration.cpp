@@ -248,21 +248,14 @@ void elementTetraSolid( vec elemCoords, vec elemDisps, vec elemConstitutiveParam
 // =====================================================================
 //
 // =====================================================================
-void elementTypeInfo( int elemType, int & numNodes, int & dofsStep ){
-
+ivec elementTypeInfo( int elemType ){
+  ivec out(2);  //~ return numNodes, dofsStep
   if ( elemType == 1){
-    numNodes = 1 ;
-    dofsStep = 1 ;
-  }else if ( elemType == 2){
-    numNodes = 2 ;
-    dofsStep = 2 ;
-  }else if ( elemType == 3){
-    numNodes = 2 ;
-    dofsStep = 1 ;
-  }else if ( elemType == 4){
-    numNodes = 4 ;
-    dofsStep = 2 ;
+    out={1,1};
+  }else if ( elemType == 4){ // tetrahedron
+    out={4,2};
   }
+  return out ;
 }
 // =============================================================================
 
@@ -284,25 +277,26 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
   // ====================================================================
 
   // -----------------------------------------------
-  int nElems  = conec.n_rows,     nNodes  = numel( Ut ) / 6 ;
-  int typeElem, numNodes, dofsStep ; // numNodes is the number of nodes per element
+  int nElems  = conec.n_rows;
+  int nNodes  = numel( Ut ) / 6 ;
+  int typeElem, numNodes ; // numNodes is the number of nodes per element
   double elemrho;
   
   vec Fint( nNodes*6, fill::zeros ) ;
   vec Fmas( nNodes*6, fill::zeros ) ;
   vec Fvis( nNodes*6, fill::zeros ) ;
   
-  //~ if (paramOut == 1){
-    // -------  residual forces vector ------------------------------------
-    // --- creates Fint vector ---
-   //~ }
+  if (paramOut == 1){
+    //~ // -------  residual forces vector ------------------------------------
+    //~ // --- creates Fint vector ---
+   }
    
   int indTotal = 0 ;
   
   vec Finte(12) ; 
   mat KTe(12,12);
   
-  ivec nodeselem, dofselem;
+  ivec nodeselem, dofselem, auxel;
   
   //~ ivec indsIKT( nElems*24*24, fill::zeros ) ;
   //~ ivec indsJKT( nElems*24*24, fill::zeros ) ;
@@ -324,8 +318,9 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     
     typeElem = elemElementParams(1-1) ;
     
-    elementTypeInfo ( typeElem, numNodes, dofsStep ) ;
-
+    auxel = elementTypeInfo ( typeElem ) ;
+    numNodes = auxel( 0 ) ;
+    
     // obtains nodes and dofs of element
     nodeselem   = conec( elem-1, span(1-1,numNodes-1) ).t()      ;
     dofselem    = nodes2dofs( nodeselem , 6 )  ;
@@ -355,8 +350,6 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
       for ( int indi=1; indi<=12; indi++){
         for ( int indj=1; indj<=12; indj++){
           indTotal++;     
-          //~ indsIKT ( indTotal-1 ) = dofselemRed( indi-1 ) ;
-          //~ indsJKT ( indTotal-1 ) = dofselemRed( indj-1 ) ;  
           
 	  locsKT ( 0, indTotal-1 ) = dofselemRed( indi-1 ) ;
 	  locsKT ( 1, indTotal-1 ) = dofselemRed( indj-1 ) ;
@@ -364,25 +357,6 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
           valsKT ( indTotal-1 ) = KTe( indi-1, indj-1 ) ;
         }     
       }
-
-      //~ for ( int indRow = 1; indRow <= 12; indRow++ ){
-
-        //~ entriesSparseStorVecs = counterInds + (1:length( dofselemRed) ) ;
-
-        //~ indsIK ( entriesSparseStorVecs  ) = dofselemRed( indRow )     ;
-        //~ indsJK ( entriesSparseStorVecs )  = dofselemRed       ;
-        //~ valsK  ( entriesSparseStorVecs )  = Ke( indRow, : )' ;
-
-        //~ if solutionMethod > 2
-          //~ valsM( entriesSparseStorVecs ) = Mmase( indRow, : )' ;
-          //~ if exist('Ce')~=0
-            //~ valsC( entriesSparseStorVecs ) = Ce   ( indRow, : )' ;
-          //~ end
-        //~ end
-
-        //~ counterInds = counterInds + length( dofselemRed ) ;
-      //~ end
-
     } // if paramOut 2
     
 
@@ -391,12 +365,14 @@ void assembler( imat conec, mat crossSecsParamsMat, mat coordsElemsMat, \
     // -------------------------------------------------------------------  
   fs(0,0) = Fint ;   fs(1,0) = Fvis ;   fs(2,0) = Fmas ;
 
-  sp_mat aux(locsKT, valsKT);
+  if (paramOut == 2){  
 
-  cout << aux << endl;
-
-  ks(0,0) = aux ;
-
+    sp_mat aux(locsKT, valsKT);
+  
+    cout << aux << endl;
+  
+    ks(0,0) = aux ;
+  }
 }
 // =============================================================================
 
@@ -648,55 +624,29 @@ int main(){
     systemDeltauRHS, FextG ) ;
   // ---------------------------------------------------
 
-  return 0;
-}
-// =============================================================================
+
+  bool booleanConverged = 0                          ;
+  uint dispIters        = 0                          ;
+  vec  currDeltau( neumdofs.n_elem , fill::zeros ) ;
 
 
-
-  //~ varsInps.load("varsInps.dat");
-  //~ coordsElemsMat.load("coordsElemsMat.dat");
-  //~ hyperElasParamsMat.load("materialsParamsMat.dat");
-
-  // --- processing ---  
-  
-  //~ int nnodes = ( varsInps.n_rows -1) / 6 ;
-  //~ int paramOut = varsInps( varsInps.n_rows - 1 ) ;
-  //~ vec Ut = varsInps( span(0,varsInps.n_rows - 2), span(0,0) ) ;
-
-  //~ cout << "  paramOut: " << paramOut << endl;
-  //~ cout << "  nnodes: " << nnodes << endl;
-  // -------------------------------------------------------------------
-  
-  //~ cout << "Ut: " << Ut << endl;
-
+  while (booleanConverged == 0){
+    
+    dispIters++;
+    cout << " --- iteration : " << dispIters << endl;
+    cout << "matriz " << size(systemDeltauMatrix) << systemDeltauMatrix <<  endl;
+    cout << "rhs " << size(systemDeltauRHS) << systemDeltauRHS <<  endl;
+    
+    
+    vec deltau = spsolve( systemDeltauMatrix, systemDeltauRHS );
+    
+    cout << "delta u" << deltau << endl;
+    
+    // --- solve system ---
+    //~ computeDeltaU ( systemDeltauMatrix, systemDeltauRHS, dispIters, convDeltau(neumdofs), numericalMethodParams, nextLoadFactor , currDeltau, deltaured, nextLoadFactor ) ;
+    // ---------------------------------------------------
 
 
-
-//~ vec Fintt = Fint ;   vec Fmast = Fmas ;   vec Fvist    = Fvis    ;
-   //~ Fint.load("Fint.dat"   );
-  //~ ifile.open("Fmas.dat"   ); if(ifile){ Fmas.load("Fmas.dat")      ;}else{ Fmas.zeros()   ;}
-  //~ ifile.open("Fvis.dat"   ); if(ifile){ Fvis.load("Fvis.dat")      ;}else{ Fvis.zeros()   ;}
-
-
-
-
-
-
-
-
-
-
-
-  //~ booleanConverged = 0                              ;
-  //~ dispIters        = 0                              ;
-  //~ currDeltau       = zeros( length( neumdofs ), 1 ) ;
-  
-  //~ while  booleanConverged == 0
-    //~ dispIters = dispIters + 1 ;
-  
-    //~ % --- solve system ---
-    //~ [ deltaured, nextLoadFactor ] = computeDeltaU ( systemDeltauMatrix, systemDeltauRHS, dispIters, convDeltau(neumdofs), numericalMethodParams, nextLoadFactor , currDeltau ) ;
     //~ % ---------------------------------------------------
   
     //~ % --- updates: model variables and computes internal forces ---
@@ -721,14 +671,16 @@ int main(){
       //~ Ut, Udott, Udotdott, Utp1k, Udottp1k, Udotdottp1k, elementsParamsMat ) ;
     //~ % ---------------------------------------------------
   
-    //~ % --- check convergence ---
+    // --- check convergence ---
+    booleanConverged = 1;
     //~ [booleanConverged, stopCritPar, deltaErrLoad ] = convergenceTest( numericalMethodParams, [], FextG(neumdofs), deltaured, Utp1k(neumdofs), dispIters, [], systemDeltauRHS ) ;
-    //~ % ---------------------------------------------------
+    // ---------------------------------------------------
   
     //~ % --- prints iteration info in file ---
     //~ printSolverOutput( outputDir, problemName, timeIndex, [ 1 dispIters deltaErrLoad norm(deltaured) ] ) ;
-  
-  //~ end % iteration while
+
+    
+  }
   //~ % --------------------------------------------------------------------
   
   //~ Utp1       = Utp1k ;
@@ -782,3 +734,99 @@ int main(){
   
   //~ timeStepStopCrit = stopCritPar ;
   //~ timeStepIters = dispIters ;
+
+
+
+  return 0;
+}
+// =============================================================================
+
+
+
+
+//~ function [deltaured, nextLoadFactor ] = computeDeltaU ( systemDeltauMatrix, systemDeltauRHS, dispIter, redConvDeltau, numericalMethodParams, nextLoadFactor, currDeltau  )
+
+  //~ [ solutionMethod, stopTolDeltau,   stopTolForces, ...
+    //~ stopTolIts,     targetLoadFactr, nLoadSteps,    ...
+    //~ incremArcLen, deltaT, deltaNW, AlphaNW, finalTime ] ...
+        //~ = extractMethodParams( numericalMethodParams ) ;
+  
+  //~ convDeltau = redConvDeltau ;  
+
+  //~ if solutionMethod == 2
+  
+    //~ aux = systemDeltauMatrix \ systemDeltauRHS ;
+    
+    //~ deltauast = aux(:,1) ;  deltaubar = aux(:,2) ;
+    
+    //~ if dispIter == 1
+      //~ if norm(convDeltau)==0
+        //~ deltalambda = targetLoadFactr / nLoadSteps ;
+      //~ else
+        //~ deltalambda = sign( convDeltau' * deltaubar ) * incremArcLen / sqrt( deltaubar' * deltaubar ) ;
+      //~ end
+      
+    //~ else
+      //~ ca =    deltaubar' * deltaubar ;
+      //~ cb = 2*(currDeltau + deltauast)' * deltaubar ;
+      //~ cc =   (currDeltau + deltauast)' * (currDeltau + deltauast) - incremArcLen^2 ; 
+      //~ disc = cb^2 - 4 * ca * cc ;
+      //~ if disc < 0
+        //~ disc, error( 'negative discriminant'); 
+      //~ end
+      //~ sols = -cb/(2*ca) + sqrt(disc) / (2*ca)*[-1 +1]' ;
+      
+      //~ vals = [ ( currDeltau + deltauast + deltaubar * sols(1) )' * currDeltau   ;
+               //~ ( currDeltau + deltauast + deltaubar * sols(2) )' * currDeltau ] ;
+     
+      //~ deltalambda = sols( find( vals == max(vals) ) ) ;
+    //~ end
+    
+    //~ nextLoadFactor  = nextLoadFactor  + deltalambda(1) ;
+    
+    //~ deltaured = deltauast + deltalambda(1) * deltaubar ;
+  
+  
+  //~ else   % incremental displacement
+    //~ deltaured = systemDeltauMatrix \ systemDeltauRHS ;
+  
+  
+  //~ end
+// ======================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //~ varsInps.load("varsInps.dat");
+  //~ coordsElemsMat.load("coordsElemsMat.dat");
+  //~ hyperElasParamsMat.load("materialsParamsMat.dat");
+
+  // --- processing ---  
+  
+  //~ int nnodes = ( varsInps.n_rows -1) / 6 ;
+  //~ int paramOut = varsInps( varsInps.n_rows - 1 ) ;
+  //~ vec Ut = varsInps( span(0,varsInps.n_rows - 2), span(0,0) ) ;
+
+  //~ cout << "  paramOut: " << paramOut << endl;
+  //~ cout << "  nnodes: " << nnodes << endl;
+  // -------------------------------------------------------------------
+  
+  //~ cout << "Ut: " << Ut << endl;
+
+
+
+
+//~ vec Fintt = Fint ;   vec Fmast = Fmas ;   vec Fvist    = Fvis    ;
+   //~ Fint.load("Fint.dat"   );
+  //~ ifile.open("Fmas.dat"   ); if(ifile){ Fmas.load("Fmas.dat")      ;}else{ Fmas.zeros()   ;}
+  //~ ifile.open("Fvis.dat"   ); if(ifile){ Fvis.load("Fvis.dat")      ;}else{ Fvis.zeros()   ;}
