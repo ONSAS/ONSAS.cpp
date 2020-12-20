@@ -2,7 +2,7 @@ clear
 cd src
 make
 echo " compilation done."
-cp timeStepIteration.lnx ../../octave_src_repo/sources/
+cp timeStepIteration.lnx ../../ONSAS_repo/sources/
 echo " binary copied."
 make clean
 cd ..
